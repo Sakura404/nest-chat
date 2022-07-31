@@ -1,16 +1,32 @@
 import { User } from 'src/user/entities/user.entity';
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne } from 'typeorm';
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  ManyToOne,
+  OneToOne,
+  OneToMany,
+  JoinColumn,
+} from 'typeorm';
 
 @Entity()
 export class FriendMessage {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => User)
+  @ManyToOne((type) => User)
+  @JoinColumn({ name: 'userId', referencedColumnName: 'id' })
   user: User;
 
-  @ManyToOne(() => User)
+  @Column()
+  userId: string;
+
+  @ManyToOne((type) => User)
+  @JoinColumn({ name: 'friendId', referencedColumnName: 'id' })
   friend: User;
+
+  @Column()
+  friendId: string;
 
   @Column()
   content: string;
@@ -18,20 +34,10 @@ export class FriendMessage {
   @Column()
   messageType: string;
 
-  @Column('double')
-  time: number;
-
   @Column({
     name: 'create_time',
     type: 'timestamp',
     default: () => 'CURRENT_TIMESTAMP',
   })
   createTime: Date;
-
-  @Column({
-    name: 'update_time',
-    type: 'timestamp',
-    default: () => 'CURRENT_TIMESTAMP',
-  })
-  updateTime: Date;
 }

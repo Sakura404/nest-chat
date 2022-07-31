@@ -8,7 +8,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from 'src/user/entities/user.entity';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
-
+import { Group } from 'src/group/entities/group.entity';
 
 const jwtModule = JwtModule.registerAsync({
   inject: [ConfigService],
@@ -20,7 +20,7 @@ const jwtModule = JwtModule.registerAsync({
   },
 });
 @Module({
-  imports: [jwtModule, TypeOrmModule.forFeature([User]), PassportModule],
+  imports: [jwtModule, TypeOrmModule.forFeature([User, Group]), PassportModule],
   exports: [jwtModule],
   controllers: [AuthController],
   providers: [

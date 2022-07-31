@@ -7,7 +7,7 @@ export class CreateUserDto {
   @ApiProperty()
   @IsNotEmpty({ message: '昵称不能为空' })
   readonly nickname: string;
-  @IsNotEmpty({ message: '重复密码不能为空' })
+  @IsNotEmpty({ message: '邮箱不能为空' })
   @ApiProperty()
   readonly email: string;
   @IsNotEmpty({ message: '密码不能为空' })

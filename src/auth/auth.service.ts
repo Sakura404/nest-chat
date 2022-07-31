@@ -1,6 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Group } from 'src/group/entities/group.entity';
 import { User } from 'src/user/entities/user.entity';
 import { Repository } from 'typeorm';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -10,6 +11,7 @@ export class AuthService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    private readonly groupRepository: Repository<Group>,
     private jwtService: JwtService,
   ) {}
 
@@ -20,10 +22,10 @@ export class AuthService {
   async login(user: Partial<User>) {
     const payload = {
       id: user.id,
-      username: user.username,
+      username: user.nickname,
     };
     const token = this.jwtService.sign(payload);
-    return { token };
+    return { token: token, user: user };
   }
   async register(createUser: CreateUserDto) {
     const { username } = createUser;
@@ -36,6 +38,13 @@ export class AuthService {
     if (createUser.passwordRepeat != createUser.password)
       throw new HttpException('前后密码不一致', HttpStatus.BAD_REQUEST);
     const newUser = await this.userRepository.create(createUser);
-    return await this.userRepository.save(newUser);
+    let newUser = await this.userRepository.save(newUser);
+    let defaultGroup = await this.groupRepository.findOne({
+      relations: ['users'],
+      where: { id: '默认群组' },
+    });
+    defaultGroup.users.push(newUser);
+    this.groupRepository.save(defaultGroup);
+    return newUser;
   }
 }

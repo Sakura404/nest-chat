@@ -23,8 +23,7 @@ export class JwtStorage extends PassportStrategy(Strategy) {
     return {
       id: payload.id,
       username: payload.username,
-      status: payload.status,
-      storageId: payload.storageId,
+      email: payload.email
     };
   }
 }

@@ -2,13 +2,14 @@ import {
   BeforeInsert,
   Column,
   Entity,
-  JoinColumn,
   JoinTable,
   ManyToMany,
+  OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { hashSync } from 'bcryptjs';
 import { Exclude } from 'class-transformer';
+import { FriendMessage } from 'src/friend/entities/friend.entity';
 @Entity('user')
 export class User {
   @PrimaryGeneratedColumn('uuid')
@@ -30,7 +31,8 @@ export class User {
   @Column()
   email: string;
 
-  @Column('simple-enum', { enum: ['root', 'user', 'visitor'] })
+  @Column('simple-enum', { default: 'user', enum: ['root', 'user', 'visitor'] })
+  @Exclude()
   role: string; // 用户角色
 
   @Column({
@@ -65,5 +67,6 @@ export class User {
     },
   })
   friend: User[];
-  
+
+  friendMessages: FriendMessage[];
 }

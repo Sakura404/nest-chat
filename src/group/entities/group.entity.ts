@@ -7,6 +7,8 @@ import {
   OneToOne,
   JoinColumn,
   JoinTable,
+  ManyToOne,
+  OneToMany,
 } from 'typeorm';
 
 @Entity()
@@ -16,7 +18,7 @@ export class Group {
 
   @OneToOne((type) => User)
   @JoinColumn()
-  user: string; //创建者
+  user: User; //创建者
 
   @Column()
   groupName: string;
@@ -41,6 +43,9 @@ export class Group {
   @ManyToMany((type) => User)
   @JoinTable({ name: 'group_user' })
   users: User[]; //群用户
+
+  @OneToMany(() => GroupMessage, (GroupMessage) => GroupMessage.group)
+  groupMessages: GroupMessage[];
 }
 
 @Entity()
@@ -48,22 +53,21 @@ export class GroupMessage {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @OneToOne((type) => User)
-  @JoinColumn()
+  @ManyToOne(() => User)
+  @JoinColumn({ name: 'userId', referencedColumnName: 'id' })
   user: User;
+  @Column()
+  userId: string;
 
-  @OneToOne((type) => Group)
+  @ManyToOne(() => Group, (group) => group.groupMessages)
   @JoinColumn()
   group: Group;
 
   @Column()
   content: string;
 
-  @Column()
+  @Column({ default: 'text' })
   messageType: string;
-
-  @Column('double')
-  time: number;
 
   @Column({
     name: 'create_time',
@@ -71,11 +75,4 @@ export class GroupMessage {
     default: () => 'CURRENT_TIMESTAMP',
   })
   createTime: Date;
-
-  @Column({
-    name: 'update_time',
-    type: 'timestamp',
-    default: () => 'CURRENT_TIMESTAMP',
-  })
-  updateTime: Date;
 }

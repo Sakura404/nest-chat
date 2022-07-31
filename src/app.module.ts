@@ -12,6 +12,7 @@ import { ChatModule } from './chat/chat.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRoot({
+      logging: ['error'],
       type: 'mysql',
       host: process.env.DATABASE_HOST,
       port: 3306,
