@@ -6,6 +6,7 @@ var isProd = process.env.NODE_ENV === 'production';
 function parseEnv() {
     var localEnv = path.resolve('.env');
     var prodEnv = path.resolve('.env.prod');
+    console.log(isProd);
     if (!fs.existsSync(localEnv) && !fs.existsSync(prodEnv)) {
         throw new Error('缺少环境配置文件');
     }

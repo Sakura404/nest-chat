@@ -8,7 +8,7 @@ import { FriendModule } from './friend/friend.module';
 import { AuthModule } from './auth/auth.module';
 import { ChatModule } from './chat/chat.module';
 import { ConfigService, ConfigModule } from '@nestjs/config';
-import envConfig from '../config/env';
+import envConfig from './config/env';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: [envConfig.path] }),
@@ -23,7 +23,7 @@ import envConfig from '../config/env';
         username: configService.get('DATABASE_USERNAME'),
         password: configService.get('DATABASE_PASSWORD'),
         database: configService.get('DATABASE_DATABASE'),
-        entities: ['dist/**/entities/*.entity{.ts,.js}'],
+        entities: [__dirname + '/**/entities/*.entity{.ts,.js}'],
         synchronize: true,
         entityPrefix: 'nc_',
       }),

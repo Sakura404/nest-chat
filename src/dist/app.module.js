@@ -53,7 +53,7 @@ var friend_module_1 = require("./friend/friend.module");
 var auth_module_1 = require("./auth/auth.module");
 var chat_module_1 = require("./chat/chat.module");
 var config_1 = require("@nestjs/config");
-var env_1 = require("../config/env");
+var env_1 = require("./config/env");
 var AppModule = /** @class */ (function () {
     function AppModule() {
     }
@@ -74,7 +74,7 @@ var AppModule = /** @class */ (function () {
                                     username: configService.get('DATABASE_USERNAME'),
                                     password: configService.get('DATABASE_PASSWORD'),
                                     database: configService.get('DATABASE_DATABASE'),
-                                    entities: ['dist/**/entities/*.entity{.ts,.js}'],
+                                    entities: [__dirname + '/**/entities/*.entity{.ts,.js}'],
                                     synchronize: true,
                                     entityPrefix: 'nc_'
                                 })];
