@@ -29,7 +29,7 @@ export class ChatGateway {
     @InjectRepository(FriendMessage)
     private readonly friendMessageRepository: Repository<FriendMessage>,
   ) {
-    this.defaultGroup = '2d490b43-f66f-4e70-89d8-31680c12ce8e';
+    this.defaultGroup = '默认群组';
   }
 
   @WebSocketServer() server: Server;

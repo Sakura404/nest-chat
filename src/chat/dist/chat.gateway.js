@@ -58,7 +58,7 @@ var ChatGateway = /** @class */ (function () {
         this.groupMessageRepository = groupMessageRepository;
         this.friendMessageRepository = friendMessageRepository;
         this.clientsArr = [];
-        this.defaultGroup = '2d490b43-f66f-4e70-89d8-31680c12ce8e';
+        this.defaultGroup = '默认群组';
     }
     ChatGateway.prototype.handleConnection = function (client) {
         var userRoom = client.handshake.query.userId; //连接需要传入userId参数

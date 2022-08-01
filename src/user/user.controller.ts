@@ -22,4 +22,9 @@ export class UserController {
   getAllFriends(@Param('id') id: string) {
     return this.userService.getAllFriends(id);
   }
+
+  @Get('search/:name')
+  findFriendByLikeName(@Param('name') name: string) {
+    return this.userService.findFriendByLikeName(name);
+  }
 }

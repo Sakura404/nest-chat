@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Like, Repository } from 'typeorm';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
@@ -37,6 +37,16 @@ export class UserService {
   //     }
   //     return { friends: user.friends };
   //   }
+
+  async findFriendByLikeName(name: string) {
+    const friends = await this.userRepository.find({
+      where: [{ nickname: Like(`%${name}%`) }, { username: Like(`%${name}%`) }],
+    });
+    if (friends.length == 0) {
+      throw new NotFoundException('找不到该用户');
+    }
+    return friends;
+  }
 }
 function where(where: any, arg1: { Id: any }) {
   throw new Error('Function not implemented.');

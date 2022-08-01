@@ -23,7 +23,7 @@ export class JwtStorage extends PassportStrategy(Strategy) {
     return {
       id: payload.id,
       username: payload.username,
-      email: payload.email
+      email: payload.email,
     };
   }
 }
