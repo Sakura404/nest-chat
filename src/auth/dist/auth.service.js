@@ -48,6 +48,7 @@ exports.__esModule = true;
 exports.AuthService = void 0;
 var common_1 = require("@nestjs/common");
 var typeorm_1 = require("@nestjs/typeorm");
+var group_entity_1 = require("src/group/entities/group.entity");
 var user_entity_1 = require("src/user/entities/user.entity");
 var AuthService = /** @class */ (function () {
     function AuthService(userRepository, groupRepository, jwtService) {
@@ -73,7 +74,7 @@ var AuthService = /** @class */ (function () {
     };
     AuthService.prototype.register = function (createUser) {
         return __awaiter(this, void 0, void 0, function () {
-            var username, existUser, newUser, newUser, defaultGroup;
+            var username, existUser, newUser, defaultGroup;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
@@ -109,7 +110,8 @@ var AuthService = /** @class */ (function () {
     };
     AuthService = __decorate([
         common_1.Injectable(),
-        __param(0, typeorm_1.InjectRepository(user_entity_1.User))
+        __param(0, typeorm_1.InjectRepository(user_entity_1.User)),
+        __param(1, typeorm_1.InjectRepository(group_entity_1.Group))
     ], AuthService);
     return AuthService;
 }());

@@ -11,6 +11,7 @@ export class AuthService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(Group)
     private readonly groupRepository: Repository<Group>,
     private jwtService: JwtService,
   ) {}
@@ -37,9 +38,9 @@ export class AuthService {
     }
     if (createUser.passwordRepeat != createUser.password)
       throw new HttpException('前后密码不一致', HttpStatus.BAD_REQUEST);
-    const newUser = await this.userRepository.create(createUser);
-    let newUser = await this.userRepository.save(newUser);
-    let defaultGroup = await this.groupRepository.findOne({
+    let newUser = await this.userRepository.create(createUser);
+    newUser = await this.userRepository.save(newUser);
+    const defaultGroup = await this.groupRepository.findOne({
       relations: ['users'],
       where: { id: '默认群组' },
     });
