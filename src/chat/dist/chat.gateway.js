@@ -72,7 +72,7 @@ var ChatGateway = /** @class */ (function () {
     ChatGateway.prototype.handleDisconnect = function (client) { };
     ChatGateway.prototype.sendFriendMessage = function (data) {
         return __awaiter(this, void 0, Promise, function () {
-            var isUser, userFriendMap, FriendMessage_1, _a, _b, friendRoom;
+            var isUser, userFriendMap, FriendMessage_1, _a, _b;
             return __generator(this, function (_c) {
                 switch (_c.label) {
                     case 0: return [4 /*yield*/, this.userRepository.findOne({
@@ -81,9 +81,10 @@ var ChatGateway = /** @class */ (function () {
                     case 1:
                         isUser = _c.sent();
                         if (!isUser) return [3 /*break*/, 6];
+                        console.log(123);
                         return [4 /*yield*/, this.userRepository
                                 .createQueryBuilder('user')
-                                .leftJoinAndSelect('user.friend', 'user1', 'user1.id= :friendId', {
+                                .leftJoinAndSelect('user.friends', 'user1', 'user1.id= :friendId', {
                                 friendId: data.friendId
                             })
                                 .where('user.id= :userId', { userId: data.userId })
@@ -91,7 +92,7 @@ var ChatGateway = /** @class */ (function () {
                     case 2:
                         userFriendMap = _c.sent();
                         if (!userFriendMap || !data.friendId) {
-                            this.server.to(data.userId).emit('groupMessage', {
+                            this.server.to(data.userId).emit('error', {
                                 code: 'error',
                                 msg: '朋友消息发送错误',
                                 data: ''
@@ -115,18 +116,15 @@ var ChatGateway = /** @class */ (function () {
                         return [4 /*yield*/, this.friendMessageRepository.save(FriendMessage_1)];
                     case 5:
                         _c.sent();
-                        friendRoom = [data.userId, data.friendId]
-                            .sort(function (a, b) {
-                            return a.localeCompare(b);
-                        })
-                            .join();
-                        this.server.to(friendRoom).emit('friendMessage', {
+                        this.server.to(data.userId).to(data.friendId).emit('friendMessage', {
                             code: 'success',
                             msg: '',
                             data: FriendMessage_1
                         });
                         _c.label = 6;
-                    case 6: return [2 /*return*/];
+                    case 6:
+                        console.log(123);
+                        return [2 /*return*/];
                 }
             });
         });
@@ -152,7 +150,7 @@ var ChatGateway = /** @class */ (function () {
                     case 2:
                         userGroupMap = _c.sent();
                         if (!userGroupMap || !data.groupId) {
-                            this.server.to(data.userId).emit('groupMessage', {
+                            this.server.to(data.userId).emit('error', {
                                 code: 'error',
                                 msg: '群消息发送错误',
                                 data: ''
@@ -226,14 +224,14 @@ var ChatGateway = /** @class */ (function () {
                         userId = client.handshake.query.userId;
                         return [4 /*yield*/, this.userRepository
                                 .createQueryBuilder('user')
-                                .leftJoinAndSelect('user.friend', 'friend')
+                                .leftJoinAndSelect('user.friends', 'friend')
                                 .where('user.id= :userId', { userId: userId })
                                 .printSql()
                                 .getOne()];
                     case 1:
                         user = _a.sent();
-                        return [4 /*yield*/, Promise.all(user.friend.map(function (element) { return __awaiter(_this, void 0, void 0, function () {
-                                var friendMessages, friendRoom;
+                        return [4 /*yield*/, Promise.all(user.friends.map(function (element) { return __awaiter(_this, void 0, void 0, function () {
+                                var friendMessages;
                                 return __generator(this, function (_a) {
                                     switch (_a.label) {
                                         case 0: return [4 /*yield*/, this.friendMessageRepository
@@ -245,12 +243,6 @@ var ChatGateway = /** @class */ (function () {
                                                 .getMany()];
                                         case 1:
                                             friendMessages = _a.sent();
-                                            friendRoom = [userId, element.id]
-                                                .sort(function (a, b) {
-                                                return a.localeCompare(b);
-                                            })
-                                                .join();
-                                            client.join(friendRoom);
                                             element.friendMessages = friendMessages;
                                             return [2 /*return*/, element];
                                     }
@@ -264,6 +256,111 @@ var ChatGateway = /** @class */ (function () {
                             data: friends
                         });
                         return [2 /*return*/];
+                }
+            });
+        });
+    };
+    ChatGateway.prototype.addFriend = function (client, data) {
+        return __awaiter(this, void 0, void 0, function () {
+            var userId, isUser, relation, friendRoom, friend, user, s, _a;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
+                    case 0:
+                        userId = client.handshake.query.userId;
+                        if (userId != data.userId) {
+                            this.server
+                                .to(userId)
+                                .emit('error', { code: 'FAIL', msg: '非法操作', data: '' });
+                        }
+                        return [4 /*yield*/, this.userRepository.findOneBy({ id: data.userId })];
+                    case 1:
+                        isUser = _b.sent();
+                        if (!isUser) return [3 /*break*/, 7];
+                        if (data.userId === data.friendId) {
+                            this.server.to(userId).emit('error', {
+                                code: 'FAIL',
+                                msg: '不能添加自己为好友',
+                                data: ''
+                            });
+                            return [2 /*return*/];
+                        }
+                        return [4 /*yield*/, this.userRepository
+                                .createQueryBuilder('user')
+                                .innerJoinAndSelect('user.friends', 'friend', 'friend.id= :friendId or friend.id= :userId', {
+                                friendId: data.friendId
+                            })
+                                .where('user.id= :userId or user.id= :friendId ', {
+                                userId: data.userId
+                            })
+                                .getOne()];
+                    case 2:
+                        relation = _b.sent();
+                        friendRoom = [data.userId, data.friendId]
+                            .sort(function (a, b) {
+                            return a.localeCompare(b);
+                        })
+                            .join();
+                        if (relation) {
+                            this.server.to(data.userId).emit('error', {
+                                code: 'FAIL',
+                                msg: '已经有该好友',
+                                data: data
+                            });
+                            return [2 /*return*/];
+                        }
+                        return [4 /*yield*/, this.userRepository.findOne({
+                                relations: ['friends'],
+                                where: {
+                                    id: data.friendId
+                                }
+                            })];
+                    case 3:
+                        friend = _b.sent();
+                        return [4 /*yield*/, this.userRepository.findOne({
+                                relations: ['friends'],
+                                where: { id: data.userId }
+                            })];
+                    case 4:
+                        user = _b.sent();
+                        if (!friend) {
+                            this.server.to(data.userId).emit('error', {
+                                code: 'FAIL',
+                                msg: '该好友不存在',
+                                data: ''
+                            });
+                            return [2 /*return*/];
+                        }
+                        user.friends.push(friend);
+                        friend.friends.push(user);
+                        return [4 /*yield*/, this.userRepository.save([user, friend])];
+                    case 5:
+                        s = _b.sent();
+                        _a = friend;
+                        return [4 /*yield*/, this.friendMessageRepository
+                                .createQueryBuilder('friendMessage')
+                                .leftJoinAndSelect('friendMessage.user', 'user')
+                                .leftJoinAndSelect('friendMessage.friend', 'friend')
+                                .where("friendMessage.userId= :userId and friendMessage.friendId= :friendId or\n         friendMessage.userId= :friendId and friendMessage.friendId= :userId", { userId: user.id, friendId: friend.id })
+                                .orderBy('friendMessage.createTime', 'DESC')
+                                .getMany()];
+                    case 6:
+                        _a.friendMessages = _b.sent();
+                        user.friendMessages = friend.friendMessages;
+                        //互相引用返回结果会爆栈
+                        friend.friends = null;
+                        user.friends = null;
+                        this.server.to(data.userId).emit('addFriend', {
+                            code: 'success',
+                            msg: "\u6DFB\u52A0\u597D\u53CB" + friend.username + "\u6210\u529F",
+                            data: friend
+                        });
+                        this.server.to(data.friendId).emit('addFriend', {
+                            code: 'success',
+                            msg: user.username + "\u6DFB\u52A0\u4F60\u4E3A\u597D\u53CB",
+                            data: user
+                        });
+                        _b.label = 7;
+                    case 7: return [2 /*return*/];
                 }
             });
         });
@@ -285,6 +382,11 @@ var ChatGateway = /** @class */ (function () {
     __decorate([
         websockets_1.SubscribeMessage('getFriends')
     ], ChatGateway.prototype, "getFriends");
+    __decorate([
+        websockets_1.SubscribeMessage('addFriend'),
+        __param(0, websockets_1.ConnectedSocket()),
+        __param(1, websockets_1.MessageBody())
+    ], ChatGateway.prototype, "addFriend");
     ChatGateway = __decorate([
         websockets_1.WebSocketGateway({
             allowEIO3: true,

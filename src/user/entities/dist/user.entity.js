@@ -119,7 +119,7 @@ var User = /** @class */ (function () {
                 referencedColumnName: 'id'
             }
         })
-    ], User.prototype, "friend");
+    ], User.prototype, "friends");
     User = User_1 = __decorate([
         typeorm_1.Entity('user')
     ], User);

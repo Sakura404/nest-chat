@@ -66,7 +66,7 @@ export class User {
       referencedColumnName: 'id',
     },
   })
-  friend: User[];
+  friends: User[];
 
   friendMessages: FriendMessage[];
 }

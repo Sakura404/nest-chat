@@ -45,3 +45,7 @@ interface FriendGroupVo {
   item: any;
   messages: [];
 }
+interface AddFriendDto {
+  userId: string;
+  friendId: string;
+}

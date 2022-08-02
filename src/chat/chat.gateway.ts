@@ -58,16 +58,17 @@ export class ChatGateway {
     });
 
     if (isUser) {
+      console.log(123);
       const userFriendMap = await this.userRepository
         .createQueryBuilder('user')
-        .leftJoinAndSelect('user.friend', 'user1', 'user1.id= :friendId', {
+        .leftJoinAndSelect('user.friends', 'user1', 'user1.id= :friendId', {
           friendId: data.friendId,
         })
         .where('user.id= :userId', { userId: data.userId })
         .getOne();
 
       if (!userFriendMap || !data.friendId) {
-        this.server.to(data.userId).emit('groupMessage', {
+        this.server.to(data.userId).emit('error', {
           code: 'error',
           msg: '朋友消息发送错误',
           data: '',
@@ -83,18 +84,14 @@ export class ChatGateway {
         id: data.userId,
       });
       await this.friendMessageRepository.save(FriendMessage);
-      //重新排序两个id拼合可以得到唯一id
-      const friendRoom = [data.userId, data.friendId]
-        .sort((a: string, b: string) => {
-          return a.localeCompare(b);
-        })
-        .join();
-      this.server.to(friendRoom).emit('friendMessage', {
+
+      this.server.to(data.userId).to(data.friendId).emit('friendMessage', {
         code: 'success',
         msg: '',
         data: FriendMessage,
       });
     }
+    console.log(123);
   }
   @SubscribeMessage('groupMessage')
   async sendGroupMessage(@MessageBody() data: GroupMessageDto): Promise<any> {
@@ -111,7 +108,7 @@ export class ChatGateway {
         .printSql()
         .getOne();
       if (!userGroupMap || !data.groupId) {
-        this.server.to(data.userId).emit('groupMessage', {
+        this.server.to(data.userId).emit('error', {
           code: 'error',
           msg: '群消息发送错误',
           data: '',
@@ -160,13 +157,13 @@ export class ChatGateway {
 
     const user = await this.userRepository
       .createQueryBuilder('user')
-      .leftJoinAndSelect('user.friend', 'friend')
+      .leftJoinAndSelect('user.friends', 'friend')
       .where('user.id= :userId', { userId: userId })
       .printSql()
       .getOne();
 
     const friends = await Promise.all(
-      user.friend.map(async (element) => {
+      user.friends.map(async (element) => {
         const friendMessages = await this.friendMessageRepository
           .createQueryBuilder('friendMessage')
           .leftJoinAndSelect('friendMessage.user', 'user')
@@ -178,12 +175,6 @@ export class ChatGateway {
           )
           .orderBy('friendMessage.createTime', 'DESC')
           .getMany();
-        const friendRoom = [userId, element.id]
-          .sort((a: string, b: string) => {
-            return a.localeCompare(b);
-          })
-          .join();
-        client.join(friendRoom);
         element.friendMessages = friendMessages;
         return element;
       }),
@@ -194,5 +185,105 @@ export class ChatGateway {
       msg: '',
       data: friends,
     });
+  }
+
+  @SubscribeMessage('addFriend')
+  async addFriend(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: AddFriendDto,
+  ) {
+    const userId = client.handshake.query.userId;
+    if (userId != data.userId) {
+      this.server
+        .to(userId)
+        .emit('error', { code: 'FAIL', msg: '非法操作', data: '' });
+    }
+
+    const isUser = await this.userRepository.findOneBy({ id: data.userId });
+    if (isUser) {
+      if (data.userId === data.friendId) {
+        this.server.to(userId).emit('error', {
+          code: 'FAIL',
+          msg: '不能添加自己为好友',
+          data: '',
+        });
+        return;
+      }
+      const relation = await this.userRepository
+        .createQueryBuilder('user')
+        .innerJoinAndSelect(
+          'user.friends',
+          'friend',
+          'friend.id= :friendId or friend.id= :userId',
+          {
+            friendId: data.friendId,
+          },
+        )
+        .where('user.id= :userId or user.id= :friendId ', {
+          userId: data.userId,
+        })
+        .getOne();
+
+      const friendRoom = [data.userId, data.friendId]
+        .sort((a: string, b: string) => {
+          return a.localeCompare(b);
+        })
+        .join();
+      if (relation) {
+        this.server.to(data.userId).emit('error', {
+          code: 'FAIL',
+          msg: '已经有该好友',
+          data: data,
+        });
+        return;
+      }
+      const friend = await this.userRepository.findOne({
+        relations: ['friends'],
+        where: {
+          id: data.friendId,
+        },
+      });
+      const user = await this.userRepository.findOne({
+        relations: ['friends'],
+        where: { id: data.userId },
+      });
+      if (!friend) {
+        this.server.to(data.userId).emit('error', {
+          code: 'FAIL',
+          msg: '该好友不存在',
+          data: '',
+        });
+        return;
+      }
+      user.friends.push(friend);
+      friend.friends.push(user);
+      const s = await this.userRepository.save([user, friend]);
+      friend.friendMessages = await this.friendMessageRepository
+        .createQueryBuilder('friendMessage')
+        .leftJoinAndSelect('friendMessage.user', 'user')
+        .leftJoinAndSelect('friendMessage.friend', 'friend')
+        .where(
+          `friendMessage.userId= :userId and friendMessage.friendId= :friendId or
+         friendMessage.userId= :friendId and friendMessage.friendId= :userId`,
+          { userId: user.id, friendId: friend.id },
+        )
+        .orderBy('friendMessage.createTime', 'DESC')
+        .getMany();
+      user.friendMessages = friend.friendMessages;
+      //互相引用返回结果会爆栈
+      friend.friends = null;
+      user.friends = null;
+      this.server.to(data.userId).emit('addFriend', {
+        code: 'success',
+        msg: `添加好友${friend.username}成功`,
+        data: friend,
+      });
+      this.server.to(data.friendId).emit('addFriend', {
+        code: 'success',
+        msg: `${user.username}添加你为好友`,
+        data: user,
+      });
+    }
+    return;
   }
 }
