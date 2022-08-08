@@ -16,7 +16,7 @@ var Group = /** @class */ (function () {
         typeorm_1.PrimaryGeneratedColumn('uuid')
     ], Group.prototype, "id");
     __decorate([
-        typeorm_1.OneToOne(function (type) { return user_entity_1.User; }),
+        typeorm_1.ManyToOne(function (type) { return user_entity_1.User; }),
         typeorm_1.JoinColumn()
     ], Group.prototype, "user");
     __decorate([
@@ -40,7 +40,7 @@ var Group = /** @class */ (function () {
         })
     ], Group.prototype, "updateTime");
     __decorate([
-        typeorm_1.ManyToMany(function (type) { return user_entity_1.User; }),
+        typeorm_1.ManyToMany(function () { return user_entity_1.User; }),
         typeorm_1.JoinTable({ name: 'group_user' })
     ], Group.prototype, "users");
     __decorate([

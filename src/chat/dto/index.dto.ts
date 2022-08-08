@@ -1,6 +1,6 @@
 // 群组
 interface GroupDto {
-  groupId: string;
+  id: string;
   userId: string; // 群主id
   groupName: string;
   notice: string;
@@ -46,6 +46,19 @@ interface FriendGroupVo {
   messages: [];
 }
 interface AddFriendDto {
+  userId: string;
+  friendId: string;
+}
+
+interface AddGroupDto {
+  userId: string;
+  groupId: string;
+}
+interface ExitGroupDto {
+  userId: string;
+  groupId: string;
+}
+interface deleteFriendDto {
   userId: string;
   friendId: string;
 }

@@ -51,6 +51,7 @@ var group_entity_1 = require("src/group/entities/group.entity");
 var typeorm_1 = require("@nestjs/typeorm");
 var user_entity_1 = require("src/user/entities/user.entity");
 var friend_entity_1 = require("src/friend/entities/friend.entity");
+var common_1 = require("@nestjs/common");
 var ChatGateway = /** @class */ (function () {
     function ChatGateway(userRepository, groupRepository, groupMessageRepository, friendMessageRepository) {
         this.userRepository = userRepository;
@@ -145,7 +146,6 @@ var ChatGateway = /** @class */ (function () {
                                 .leftJoinAndSelect('group.users', 'user')
                                 .where('group.id = :groupId', { groupId: data.groupId })
                                 .andWhere('user.id = :userId', { userId: data.userId })
-                                .printSql()
                                 .getOne()];
                     case 2:
                         userGroupMap = _c.sent();
@@ -365,6 +365,201 @@ var ChatGateway = /** @class */ (function () {
             });
         });
     };
+    ChatGateway.prototype.createGroup = function (client, data) {
+        return __awaiter(this, void 0, void 0, function () {
+            var userId, isUser, isHaveGroup, group;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        userId = client.handshake.query.userId;
+                        return [4 /*yield*/, this.userRepository.findOne({
+                                where: { id: data.userId }
+                            })];
+                    case 1:
+                        isUser = _a.sent();
+                        if (!(isUser && userId == data.userId)) return [3 /*break*/, 5];
+                        return [4 /*yield*/, this.groupRepository.findOneBy({
+                                groupName: data.groupName
+                            })];
+                    case 2:
+                        isHaveGroup = _a.sent();
+                        if (isHaveGroup) {
+                            this.server.to(userId).emit('error', {
+                                code: 'error',
+                                msg: '该群名字已存在',
+                                data: isHaveGroup
+                            });
+                            return [2 /*return*/];
+                        }
+                        return [4 /*yield*/, this.groupRepository.create(data)];
+                    case 3:
+                        group = _a.sent();
+                        group.user = isUser;
+                        group.users = [isUser];
+                        return [4 /*yield*/, this.groupRepository.save(group)];
+                    case 4:
+                        group = _a.sent();
+                        client.join(group.id);
+                        this.server.to(group.id).emit('createGroup', {
+                            code: 'success',
+                            msg: "\u6210\u529F\u521B\u5EFA\u7FA4" + data.groupName,
+                            data: group
+                        });
+                        return [3 /*break*/, 6];
+                    case 5:
+                        this.server
+                            .to(userId)
+                            .emit('error', { code: 'error', msg: "\u4F60\u6CA1\u8D44\u683C\u521B\u5EFA\u7FA4" });
+                        _a.label = 6;
+                    case 6: return [2 /*return*/];
+                }
+            });
+        });
+    };
+    ChatGateway.prototype.addGroup = function (client, data) {
+        return __awaiter(this, void 0, void 0, function () {
+            var isUser, group, userGroup, user;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0: return [4 /*yield*/, this.userRepository.findOneBy({ id: data.userId })];
+                    case 1:
+                        isUser = _a.sent();
+                        if (!isUser) return [3 /*break*/, 7];
+                        return [4 /*yield*/, this.groupRepository.findOne({
+                                where: {
+                                    id: data.groupId
+                                },
+                                relations: ['users', 'groupMessages', 'groupMessages.user']
+                            })];
+                    case 2:
+                        group = _a.sent();
+                        return [4 /*yield*/, this.groupRepository
+                                .createQueryBuilder('group')
+                                .leftJoinAndSelect('group.users', 'user')
+                                .where('group.id = :groupId', { groupId: data.groupId })
+                                .andWhere('user.id = :userId', { userId: data.userId })
+                                .getOne()];
+                    case 3:
+                        userGroup = _a.sent();
+                        user = isUser;
+                        if (!(group && user && !userGroup)) return [3 /*break*/, 5];
+                        group.users.push(user);
+                        return [4 /*yield*/, this.groupRepository.save(group)];
+                    case 4:
+                        userGroup = _a.sent();
+                        client.join(userGroup.id);
+                        this.server.to(userGroup.id).emit('addGroup', {
+                            code: 'success',
+                            msg: user.username + "\u52A0\u5165\u7FA4" + group.groupName,
+                            data: userGroup
+                        });
+                        return [3 /*break*/, 6];
+                    case 5:
+                        this.server
+                            .to(data.userId)
+                            .emit('error', { code: 'error', msg: '进群失败', data: '' });
+                        _a.label = 6;
+                    case 6: return [3 /*break*/, 8];
+                    case 7:
+                        this.server
+                            .to(data.userId)
+                            .emit('error', { code: 'error', msg: '你没资格进群' });
+                        _a.label = 8;
+                    case 8: return [2 /*return*/];
+                }
+            });
+        });
+    };
+    ChatGateway.prototype.exitGroup = function (client, data) {
+        return __awaiter(this, void 0, void 0, function () {
+            var isUser, group, userGroup;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0: return [4 /*yield*/, this.userRepository.findOneBy({ id: data.userId })];
+                    case 1:
+                        isUser = _a.sent();
+                        if (!isUser) return [3 /*break*/, 3];
+                        return [4 /*yield*/, this.groupRepository.findOne({
+                                where: {
+                                    id: data.groupId
+                                },
+                                relations: ['users']
+                            })];
+                    case 2:
+                        group = _a.sent();
+                        userGroup = group.users.findIndex(function (r) {
+                            return r.id == data.userId;
+                        });
+                        if (userGroup != -1) {
+                            group.users.splice(userGroup, 1);
+                            this.groupRepository.save(group);
+                            this.server.to(data.userId).emit('exitGroup', {
+                                code: 'success',
+                                msg: '退群成功',
+                                data: data
+                            });
+                            client.rooms["delete"](data.groupId);
+                        }
+                        else {
+                            this.server
+                                .to(data.userId)
+                                .emit('exitGroup', { code: 'error', msg: '退群失败' });
+                        }
+                        return [3 /*break*/, 4];
+                    case 3:
+                        this.server
+                            .to(data.userId)
+                            .emit('exitGroup', { code: 'error', msg: '退群失败' });
+                        _a.label = 4;
+                    case 4: return [2 /*return*/];
+                }
+            });
+        });
+    };
+    ChatGateway.prototype.deleteFriend = function (client, data) {
+        return __awaiter(this, void 0, void 0, function () {
+            var user, friend, userFriendIndex, friendUserIndex;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0: return [4 /*yield*/, this.userRepository.findOne({
+                            relations: ['friends'],
+                            where: { id: data.userId }
+                        })];
+                    case 1:
+                        user = _a.sent();
+                        return [4 /*yield*/, this.userRepository.findOne({
+                                relations: ['friends'],
+                                where: { id: data.friendId }
+                            })];
+                    case 2:
+                        friend = _a.sent();
+                        userFriendIndex = user.friends.findIndex(function (user) { return user.id === data.friendId; });
+                        friendUserIndex = friend.friends.findIndex(function (user) { return user.id === data.userId; });
+                        if (user && friend && friendUserIndex != -1 && userFriendIndex != -1) {
+                            user.friends.splice(userFriendIndex, 1);
+                            friend.friends.splice(friendUserIndex, 1);
+                            this.userRepository.save([user, friend]);
+                            this.server.to(data.userId).emit('deleteFriend', {
+                                code: 'success',
+                                msg: '删好友成功',
+                                data: data
+                            });
+                            this.server.to(data.friendId).emit('deleteFriend', {
+                                code: 'success',
+                                msg: "\u7528\u6237 " + user.nickname + " \u5DF2\u4F60\u7684\u5220\u9664\u597D\u53CB",
+                                data: data
+                            });
+                        }
+                        else {
+                            this.server
+                                .to(data.userId)
+                                .emit('deleteFriend', { code: 'error', msg: '删好友失败' });
+                        }
+                        return [2 /*return*/];
+                }
+            });
+        });
+    };
     __decorate([
         websockets_1.WebSocketServer()
     ], ChatGateway.prototype, "server");
@@ -387,8 +582,30 @@ var ChatGateway = /** @class */ (function () {
         __param(0, websockets_1.ConnectedSocket()),
         __param(1, websockets_1.MessageBody())
     ], ChatGateway.prototype, "addFriend");
+    __decorate([
+        websockets_1.SubscribeMessage('createGroup'),
+        __param(0, websockets_1.ConnectedSocket()),
+        __param(1, websockets_1.MessageBody())
+    ], ChatGateway.prototype, "createGroup");
+    __decorate([
+        websockets_1.SubscribeMessage('addGroup'),
+        __param(0, websockets_1.ConnectedSocket()),
+        __param(1, websockets_1.MessageBody())
+    ], ChatGateway.prototype, "addGroup");
+    __decorate([
+        websockets_1.SubscribeMessage('exitGroup'),
+        __param(0, websockets_1.ConnectedSocket()),
+        __param(1, websockets_1.MessageBody())
+    ], ChatGateway.prototype, "exitGroup");
+    __decorate([
+        websockets_1.SubscribeMessage('deleteFriend'),
+        __param(0, websockets_1.ConnectedSocket()),
+        __param(1, websockets_1.MessageBody())
+    ], ChatGateway.prototype, "deleteFriend");
     ChatGateway = __decorate([
+        common_1.UseInterceptors(common_1.ClassSerializerInterceptor),
         websockets_1.WebSocketGateway({
+            //解决与前端socket.io版本不同的问题
             allowEIO3: true,
             cors: {
                 origin: true,

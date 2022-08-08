@@ -11,7 +11,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from 'src/user/entities/user.entity';
 import { FriendMessage } from 'src/friend/entities/friend.entity';
+import { ClassSerializerInterceptor, UseInterceptors } from '@nestjs/common';
+@UseInterceptors(ClassSerializerInterceptor)
 @WebSocketGateway({
+  //解决与前端socket.io版本不同的问题
   allowEIO3: true,
   cors: {
     origin: true,
@@ -105,7 +108,6 @@ export class ChatGateway {
         .leftJoinAndSelect('group.users', 'user')
         .where('group.id = :groupId', { groupId: data.groupId })
         .andWhere('user.id = :userId', { userId: data.userId })
-        .printSql()
         .getOne();
       if (!userGroupMap || !data.groupId) {
         this.server.to(data.userId).emit('error', {
@@ -285,5 +287,160 @@ export class ChatGateway {
       });
     }
     return;
+  }
+
+  @SubscribeMessage('createGroup')
+  async createGroup(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: GroupDto,
+  ) {
+    const userId = client.handshake.query.userId;
+
+    const isUser = await this.userRepository.findOne({
+      where: { id: data.userId },
+    });
+    if (isUser && userId == data.userId) {
+      const isHaveGroup = await this.groupRepository.findOneBy({
+        groupName: data.groupName,
+      });
+      if (isHaveGroup) {
+        this.server.to(userId).emit('error', {
+          code: 'error',
+          msg: '该群名字已存在',
+          data: isHaveGroup,
+        });
+        return;
+      }
+      let group: Group = await this.groupRepository.create(data);
+      group.user = isUser;
+      group.users = [isUser];
+      group = await this.groupRepository.save(group);
+      client.join(group.id);
+      this.server.to(group.id).emit('createGroup', {
+        code: 'success',
+        msg: `成功创建群${data.groupName}`,
+        data: group,
+      });
+    } else {
+      this.server
+        .to(userId)
+        .emit('error', { code: 'error', msg: `你没资格创建群` });
+    }
+  }
+
+  @SubscribeMessage('addGroup')
+  async addGroup(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: AddGroupDto,
+  ) {
+    const isUser = await this.userRepository.findOneBy({ id: data.userId });
+    if (isUser) {
+      const group = await this.groupRepository.findOne({
+        where: {
+          id: data.groupId,
+        },
+        relations: ['users', 'groupMessages', 'groupMessages.user'],
+      });
+      let userGroup = await this.groupRepository
+        .createQueryBuilder('group')
+        .leftJoinAndSelect('group.users', 'user')
+        .where('group.id = :groupId', { groupId: data.groupId })
+        .andWhere('user.id = :userId', { userId: data.userId })
+        .getOne();
+      const user = isUser;
+      if (group && user && !userGroup) {
+        group.users.push(user);
+        userGroup = await this.groupRepository.save(group);
+        client.join(userGroup.id);
+        this.server.to(userGroup.id).emit('addGroup', {
+          code: 'success',
+          msg: `${user.username}加入群${group.groupName}`,
+          data: userGroup,
+        });
+      } else {
+        this.server
+          .to(data.userId)
+          .emit('error', { code: 'error', msg: '进群失败', data: '' });
+      }
+    } else {
+      this.server
+        .to(data.userId)
+        .emit('error', { code: 'error', msg: '你没资格进群' });
+    }
+  }
+  @SubscribeMessage('exitGroup')
+  async exitGroup(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: ExitGroupDto,
+  ) {
+    const isUser = await this.userRepository.findOneBy({ id: data.userId });
+    if (isUser) {
+      const group = await this.groupRepository.findOne({
+        where: {
+          id: data.groupId,
+        },
+        relations: ['users'],
+      });
+      const userGroup = group.users.findIndex((r) => {
+        return r.id == data.userId;
+      });
+      if (userGroup != -1) {
+        group.users.splice(userGroup, 1);
+        this.groupRepository.save(group);
+        this.server.to(data.userId).emit('exitGroup', {
+          code: 'success',
+          msg: '退群成功',
+          data: data,
+        });
+        client.rooms.delete(data.groupId);
+      } else {
+        this.server
+          .to(data.userId)
+          .emit('exitGroup', { code: 'error', msg: '退群失败' });
+      }
+    } else {
+      this.server
+        .to(data.userId)
+        .emit('exitGroup', { code: 'error', msg: '退群失败' });
+    }
+  }
+  @SubscribeMessage('deleteFriend')
+  async deleteFriend(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: deleteFriendDto,
+  ) {
+    const user = await this.userRepository.findOne({
+      relations: ['friends'],
+      where: { id: data.userId },
+    });
+    const friend = await this.userRepository.findOne({
+      relations: ['friends'],
+      where: { id: data.friendId },
+    });
+    const userFriendIndex = user.friends.findIndex(
+      (user) => user.id === data.friendId,
+    );
+    const friendUserIndex = friend.friends.findIndex(
+      (user) => user.id === data.userId,
+    );
+    if (user && friend && friendUserIndex != -1 && userFriendIndex != -1) {
+      user.friends.splice(userFriendIndex, 1);
+      friend.friends.splice(friendUserIndex, 1);
+      this.userRepository.save([user, friend]);
+      this.server.to(data.userId).emit('deleteFriend', {
+        code: 'success',
+        msg: '删好友成功',
+        data: data,
+      });
+      this.server.to(data.friendId).emit('deleteFriend', {
+        code: 'success',
+        msg: `用户 ${user.nickname} 已你的删除好友`,
+        data: data,
+      });
+    } else {
+      this.server
+        .to(data.userId)
+        .emit('deleteFriend', { code: 'error', msg: '删好友失败' });
+    }
   }
 }

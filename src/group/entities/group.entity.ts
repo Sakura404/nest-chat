@@ -4,7 +4,6 @@ import {
   Column,
   PrimaryGeneratedColumn,
   ManyToMany,
-  OneToOne,
   JoinColumn,
   JoinTable,
   ManyToOne,
@@ -16,7 +15,7 @@ export class Group {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @OneToOne((type) => User)
+  @ManyToOne((type) => User)
   @JoinColumn()
   user: User; //创建者
 
@@ -40,7 +39,7 @@ export class Group {
   })
   updateTime: Date;
 
-  @ManyToMany((type) => User)
+  @ManyToMany(() => User)
   @JoinTable({ name: 'group_user' })
   users: User[]; //群用户
 
