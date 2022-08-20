@@ -186,6 +186,7 @@ var ChatGateway = /** @class */ (function () {
     ChatGateway.prototype.getGroups = function (client) {
         return __awaiter(this, void 0, void 0, function () {
             var userId, group;
+            var _this = this;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
@@ -200,10 +201,28 @@ var ChatGateway = /** @class */ (function () {
                                 .getMany()];
                     case 1:
                         group = _a.sent();
+                        return [4 /*yield*/, Promise.all(group.map(function (element) { return __awaiter(_this, void 0, void 0, function () {
+                                var users;
+                                return __generator(this, function (_a) {
+                                    switch (_a.label) {
+                                        case 0: return [4 /*yield*/, this.userRepository
+                                                .createQueryBuilder('user')
+                                                .leftJoinAndSelect('nc_group_user', 'groupMap', 'groupMap.userId = user.id')
+                                                .where('groupMap.groupId= :groupId')
+                                                .setParameters({ groupId: element.id })
+                                                .printSql()
+                                                .getMany()];
+                                        case 1:
+                                            users = _a.sent();
+                                            element.users = users;
+                                            client.join(element.id);
+                                            return [2 /*return*/, element];
+                                    }
+                                });
+                            }); }))];
+                    case 2:
                         //console.log(group);
-                        group.forEach(function (e) {
-                            client.join(e.id);
-                        });
+                        group = _a.sent();
                         this.server.to(userId).emit('getGroups', {
                             code: 'success',
                             msg: '',

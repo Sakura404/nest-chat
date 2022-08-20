@@ -80,7 +80,7 @@ var User = /** @class */ (function () {
         class_transformer_1.Exclude()
     ], User.prototype, "password");
     __decorate([
-        typeorm_1.Column({ "default": 'defaultAvatar.jpg' })
+        typeorm_1.Column({ "default": '/defaultAvatar.jpg' })
     ], User.prototype, "avatar");
     __decorate([
         typeorm_1.Column()

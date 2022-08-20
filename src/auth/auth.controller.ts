@@ -2,6 +2,7 @@ import {
   Body,
   ClassSerializerInterceptor,
   Controller,
+  Get,
   Post,
   Req,
   UseGuards,
@@ -25,5 +26,11 @@ export class AuthController {
   @Post('/register')
   create(@Body() createUserDto: CreateUserDto) {
     return this.authService.register(createUserDto);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Get('/islogin')
+  isLogin() {
+    return true;
   }
 }

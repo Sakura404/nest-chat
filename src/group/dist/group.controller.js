@@ -11,6 +11,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 exports.__esModule = true;
 exports.GroupController = void 0;
 var common_1 = require("@nestjs/common");
+var passport_1 = require("@nestjs/passport");
 var GroupController = /** @class */ (function () {
     function GroupController(groupService) {
         this.groupService = groupService;
@@ -50,6 +51,7 @@ var GroupController = /** @class */ (function () {
         __param(0, common_1.Param('id'))
     ], GroupController.prototype, "remove");
     GroupController = __decorate([
+        common_1.UseGuards(passport_1.AuthGuard('jwt')),
         common_1.Controller('group')
     ], GroupController);
     return GroupController;

@@ -135,7 +135,8 @@ export class ChatGateway {
   @SubscribeMessage('getGroups')
   async getGroups(client: Socket) {
     const userId = client.handshake.query.userId;
-    const group = await this.groupRepository
+   //  const allGroups = await this.groupRepository.find();
+    let group = await this.groupRepository
       .createQueryBuilder('group')
       .leftJoinAndSelect('group.users', 'user')
       .leftJoinAndSelect('group.groupMessages', 'groupMessage')
@@ -144,9 +145,25 @@ export class ChatGateway {
       .orderBy('groupMessage.createTime', 'DESC')
       .getMany();
     //console.log(group);
-    group.forEach((e) => {
-      client.join(e.id);
-    });
+
+    group = await Promise.all(
+      group.map(async (element) => {
+        const users = await this.userRepository
+          .createQueryBuilder('user')
+          .leftJoinAndSelect(
+            'nc_group_user',
+            'groupMap',
+            'groupMap.userId = user.id',
+          )
+          .where('groupMap.groupId= :groupId')
+          .setParameters({ groupId: element.id })
+          .printSql()
+          .getMany();
+        element.users = users;
+        client.join(element.id);
+        return element;
+      }),
+    );
     this.server.to(userId).emit('getGroups', {
       code: 'success',
       msg: '',
