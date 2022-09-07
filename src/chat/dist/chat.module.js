@@ -76,7 +76,7 @@ var ChatModule = /** @class */ (function () {
                             })];
                     case 2:
                         _a.sent();
-                        console.log('create default group 阿童木聊天室');
+                        console.log('create default group 默认群组');
                         _a.label = 3;
                     case 3: return [2 /*return*/];
                 }

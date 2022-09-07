@@ -29,7 +29,7 @@ export class ChatModule {
         groupName: '默认群组',
         userId: 'admin',
       });
-      console.log('create default group 阿童木聊天室');
+      console.log('create default group 默认群组');
     }
   }
 }
